@@ -2,48 +2,97 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-using Microsoft.AspNet.SignalR.Client.Hubs;
-using Microsoft.AspNet.SignalR.Client;
+using Newtonsoft.Json.Linq;
+using SignalR.Client._20.Hubs;
+using System.Threading;
 
 public class Main : MonoBehaviour
 {
-	void Start ()
+    HubConnection connection;
+    IHubProxy myHub;
+
+    void Start()
     {
-        var connection = new HubConnection("https://quisutdeus.in");
-        var myHub = connection.CreateHubProxy("GeneralHub");
+        // uncomment below to stream debug into console
+        // Debug.Listeners.Add(new ConsoleTraceListener());
 
-        connection.Start().ContinueWith(task => {
-            if (task.IsFaulted)
+        // initialize connection and its proxy
+        connection = new HubConnection("https://quisutdeus.in");
+        myHub = connection.CreateProxy("GeneralHub");
+
+        myHub.Subscribe("addNewMessageToPage").Data += data =>
+        {
+            var _first = data[0] as JToken;
+            Debug.Log(string.Format("Received: [{0}] from {1}",
+                _first["message"].ToString(), _first["from"].ToString()));
+        };
+
+        connection.Error += x => Debug.LogError(x.Message);
+
+        new Thread(() =>
+        {
+            connection.Start();           
+        }).Start();
+
+        new Thread(() =>
+        {
+            myHub.Invoke("SendChatMessage", "JS CLient", "I am working").Finished += (sender, e) =>
             {
-                Console.WriteLine("There was an error opening the connection:{0}",
-                                  task.Exception.GetBaseException());
-            }
-            else
+                Debug.Log("done");
+            };
+        }).Start();
+
+        /*
+        // subscribe to event
+        proxy.Subscribe("Pong").Data += data =>
+        {
+            var _first = data[0] as JToken;
+            Console.WriteLine("Received: [{0}] from {1}",
+                _first["message"].ToString(), _first["from"].ToString());
+        };
+
+        Console.Write("Connecting... ");
+        connection.Start();
+        Console.WriteLine("done. Hit: ");
+        Console.WriteLine("1:\tSend hello message");
+        Console.WriteLine("2:\tRequest => Reply with dynamic reply");
+        Console.WriteLine("3:\tRequest => Reply with value type");
+        Console.WriteLine("Esc:\tExit");
+        Console.WriteLine("");
+
+        var _exit = false;
+        while (!_exit)
+        {
+            switch (Console.ReadKey(true).Key)
             {
-                Console.WriteLine("Connected");
+                case ConsoleKey.D1:
+                    Console.Write("Sending hi... ");
+                    proxy.Invoke("Ping", Environment.UserName).Finished += (sender, e) =>
+                    {
+                        Console.WriteLine("done");
+                    };
+                    break;
+                case ConsoleKey.D2:
+                    Console.Write("Sending request... ");
+                    proxy.Invoke("RequestReplyDynamic").Finished += (sender, e) =>
+                    {
+                        var _first = e.Result as JToken;
+                        Console.WriteLine(" got reply [{0}]", _first["time"].ToString());
+                    };
+                    break;
+                case ConsoleKey.D3:
+                    Console.Write("Sending request... ");
+                    proxy.Invoke("RequestReplyValueType").Finished += (sender, e) =>
+                    {
+                        Console.WriteLine("got reply  [{0}]", e.Result);
+                    };
+                    break;
+                case ConsoleKey.Escape:
+                    _exit = true;
+                    break;
             }
-
-        }).Wait();
-
-        myHub.Invoke<string, string>("SendChatMessage", (x => Console.WriteLine("Progress: " + x)), "JS CLient", "I am working").ContinueWith(task => {
-            if (task.IsFaulted)
-            {
-                Console.WriteLine("There was an error calling send: {0}",
-                                  task.Exception.GetBaseException());
-            }
-            else
-            {
-                Console.WriteLine(task.Result);
-            }
-        });
-
-        myHub.On<string, string>("addNewMessageToPage", (param, param2) => {
-            Console.WriteLine(param + ": " + param2);
-        });
-
-        //myHub.Invoke<string>("DoSomething", "I'm doing something!!!").Wait();
-
-        Console.Read();
-        connection.Stop();
+        }
+        */
     }
 }
+ 
