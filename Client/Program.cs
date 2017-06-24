@@ -8,11 +8,8 @@ namespace Client
     {
         private static void Main(string[] args)
         {
-            //Set connection
-            var connection = new HubConnection("http://127.0.0.1:8088/");
-            //Make proxy to hub based on hub name on server
+            var connection = new HubConnection(args[0]);
             var myHub = connection.CreateHubProxy("GeneralHub");
-            //Start connection
 
             connection.Start().ContinueWith(task => {
                 if (task.IsFaulted)
