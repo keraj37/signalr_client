@@ -7,19 +7,26 @@ using UnityEngine.UI;
 public class Main : MonoBehaviour
 {
     public RawImage img;
+    WebCamTexture webCamTexture;
 
     void Start()
     {
-        WebCamTexture webCamTexture = new WebCamTexture();
+        webCamTexture = new WebCamTexture();
         webCamTexture.Play();
+        img.texture = webCamTexture;
+    }
 
-        if(webCamTexture.isPlaying)
+    public void TakeScreenshot()
+    {
+        if (webCamTexture.isPlaying)
         {
+            /*
             Texture2D PhotoTaken = new Texture2D(webCamTexture.width, webCamTexture.height);
             PhotoTaken.SetPixels(webCamTexture.GetPixels());
             PhotoTaken.Apply();
 
             img.texture = PhotoTaken;
+            */
         }
     }
 }
