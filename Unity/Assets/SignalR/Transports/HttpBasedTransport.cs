@@ -203,7 +203,10 @@ namespace SignalR.Client._20.Transports
 
                     connection.MessageId = Extensions.Value<string>(_result["C"]);
 
-                    var _transportData = _result["T"] as JObject;
+                    UnityEngine.Debug.Log(_result["T"].ToString());
+
+                    /*
+                    JObject _transportData = _result["T"] as JObject;
 
                     if (_transportData != null)
                     {
@@ -218,6 +221,7 @@ namespace SignalR.Client._20.Transports
                             connection.Groups = groupList;
                         }
                     }
+                    */
                 }
             }
             catch (Exception ex)

@@ -16,75 +16,43 @@ public class Main : MonoBehaviour
         // uncomment below to stream debug into console
         // Debug.Listeners.Add(new ConsoleTraceListener());
 
-        // initialize connection and its proxy
-        connection = new HubConnection("https://quisutdeus.in");
-        myHub = connection.CreateProxy("GeneralHub");
+        // this is an optional query parameters to sent with each message
+        var query = new Dictionary<string, string>();
+        query.Add("version", "1.0");
 
-        myHub.Subscribe("addNewMessageToPage").Data += data =>
+        // initialize connection and its proxy
+        HubConnection connection = new HubConnection("https://quisutdeus.in", query);
+        IHubProxy proxy = connection.CreateProxy("GeneralHub");
+
+        // subscribe to event
+        proxy.Subscribe("addNewMessageToPage").Data += data =>
         {
             var _first = data[0] as JToken;
             Debug.Log(string.Format("Received: [{0}] from {1}",
                 _first["message"].ToString(), _first["from"].ToString()));
         };
 
-        connection.Error += x => Debug.LogError(x.Message);
+        connection.Closed += () => Debug.Log("Closed");
+        connection.Error += x => Debug.Log("Error: " + x.Message);
+        connection.Received += x => Debug.Log("Recived: " + x);
+        connection.Reconnected += () => Debug.Log("Reconected");
 
         new Thread(() =>
         {
-            connection.Start();           
-        }).Start();
-
-        new Thread(() =>
-        {
-            myHub.Invoke("SendChatMessage", "JS CLient", "I am working").Finished += (sender, e) =>
-            {
-                Debug.Log("done");
-            };
+            connection.Start();
         }).Start();
 
         /*
-        // subscribe to event
-        proxy.Subscribe("Pong").Data += data =>
-        {
-            var _first = data[0] as JToken;
-            Console.WriteLine("Received: [{0}] from {1}",
-                _first["message"].ToString(), _first["from"].ToString());
-        };
-
-        Console.Write("Connecting... ");
-        connection.Start();
-        Console.WriteLine("done. Hit: ");
-        Console.WriteLine("1:\tSend hello message");
-        Console.WriteLine("2:\tRequest => Reply with dynamic reply");
-        Console.WriteLine("3:\tRequest => Reply with value type");
-        Console.WriteLine("Esc:\tExit");
-        Console.WriteLine("");
-
         var _exit = false;
         while (!_exit)
         {
             switch (Console.ReadKey(true).Key)
             {
-                case ConsoleKey.D1:
+                case ConsoleKey.F1:
                     Console.Write("Sending hi... ");
-                    proxy.Invoke("Ping", Environment.UserName).Finished += (sender, e) =>
+                    proxy.Invoke("SendChatMessage", "JS CLient", "I am working").Finished += (sender, e) =>
                     {
-                        Console.WriteLine("done");
-                    };
-                    break;
-                case ConsoleKey.D2:
-                    Console.Write("Sending request... ");
-                    proxy.Invoke("RequestReplyDynamic").Finished += (sender, e) =>
-                    {
-                        var _first = e.Result as JToken;
-                        Console.WriteLine(" got reply [{0}]", _first["time"].ToString());
-                    };
-                    break;
-                case ConsoleKey.D3:
-                    Console.Write("Sending request... ");
-                    proxy.Invoke("RequestReplyValueType").Finished += (sender, e) =>
-                    {
-                        Console.WriteLine("got reply  [{0}]", e.Result);
+                        Debug.Log("done");
                     };
                     break;
                 case ConsoleKey.Escape:
@@ -95,4 +63,5 @@ public class Main : MonoBehaviour
         */
     }
 }
+
  
