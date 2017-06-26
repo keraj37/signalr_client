@@ -31,7 +31,11 @@ public class Main : MonoBehaviour
     {
         //StartCoroutine(Upload("TEST TEST"));
 
-        Program.Test();
+        //Program.Test();
+
+        SignalRClient ws = new SignalRClient();
+        ws.Open();
+        ws.SendMessage("Unity", "From Unity");
     }
 
     /*
