@@ -29,8 +29,54 @@ public class Main : MonoBehaviour
 
     public void Test()
     {
-        StartCoroutine(Upload("TEST TEST"));
+        //StartCoroutine(Upload("TEST TEST"));
+
+        Program.Test();
     }
+
+    /*
+    private void SignalR()
+    {
+        var connection = new HubConnection("https:/quisutdeus.in");
+        var myHub = connection.CreateHubProxy("WebCamHub");
+        //Start connection
+
+        connection.Start().ContinueWith(task => {
+            if (task.IsFaulted)
+            {
+                Console.WriteLine("There was an error opening the connection:{0}",
+                                  task.Exception.GetBaseException());
+            }
+            else
+            {
+                Console.WriteLine("Connected");
+            }
+
+        }).Wait();
+
+        myHub.Invoke<string>("Send", "HELLO World ").ContinueWith(task => {
+            if (task.IsFaulted)
+            {
+                Console.WriteLine("There was an error calling send: {0}",
+                                  task.Exception.GetBaseException());
+            }
+            else
+            {
+                Console.WriteLine(task.Result);
+            }
+        });
+
+        myHub.On<string>("addMessage", param => {
+            Console.WriteLine(param);
+        });
+
+        myHub.Invoke<string>("DoSomething", "I'm doing something!!!").Wait();
+
+
+        Console.Read();
+        connection.Stop();
+    }
+    */
 
     public void TakeScreenshot()
     {
