@@ -33,9 +33,9 @@ public class Main : MonoBehaviour
 
         //Program.Test();
 
-        SignalRClient ws = new SignalRClient();
+        SignalRClient ws = new SignalRClient("http://quisutdeus.in/", "WebCamHub");
         ws.Open();
-        ws.SendMessage("Unity", "From Unity");
+        ws.SendImage(inputName.text, "asdasdasd");
     }
 
     /*

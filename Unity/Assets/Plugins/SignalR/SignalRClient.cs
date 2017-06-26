@@ -12,15 +12,19 @@ public class SignalRClient
     private string _connectionToken;
     private Dictionary<string, UnTypedActionContainer> _actionMap;
 
-    private readonly string _socketUrl = "http://quisutdeus.in/";
+    private string _socketUrl = "http://quisutdeus.in/";
+    private string _hubName = "generalhub";
+    private string _socket = "ws://quisutdeus.in/";
 
-    private readonly string _socket = "ws://quisutdeus.in/";
-
-    public SignalRClient()
+    public SignalRClient(string url, string hubName)
     {
+        _socketUrl = url;
+        _socket = _socketUrl.Replace("http", "ws");
+        _hubName = hubName;
+
         //https://quisutdeus.in/signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498509973099
         _actionMap = new Dictionary<string, UnTypedActionContainer>();
-        var webRequest = (HttpWebRequest)WebRequest.Create(_socketUrl + "signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498509973099");
+        var webRequest = (HttpWebRequest)WebRequest.Create(_socketUrl + string.Format("signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22{0}%22%7D%5D&_=1498509973099", _hubName.ToLower()));
         var response = (HttpWebResponse)webRequest.GetResponse();
 
         using (var sr = new StreamReader(response.GetResponseStream()))
@@ -30,9 +34,6 @@ public class SignalRClient
             UnityEngine.Debug.Log(payload);
 
             _connectionToken = Uri.EscapeDataString(JSON.Parse(payload).AsObject["ConnectionToken"].Value);
-
-            //UnityEngine.Debug.Log(_connectionToken);
-
         }
     }
 
@@ -41,8 +42,8 @@ public class SignalRClient
         //https://quisutdeus.in/signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken=TjDSq4EGvQmio1cECGk73hEjD%2B9dbLaplCcD19416JtTH0B1CJ%2FQ6FS4Il45pNmKxflOdAL9NeXgUxHm1JdHPOA1vBXeboXZaq9cSyXjCtacZNMAyKhk7ICKkXJtybsi&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=10
 
         _ws = _ws == null
-            ? new WebSocket(_socket + string.Format("signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=10", _connectionToken))
-            : new WebSocket(_socket + string.Format("signalr/reconnect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=10", _connectionToken));
+            ? new WebSocket(_socket + string.Format("signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22{1}%22%7D%5D&tid=10", _connectionToken, _hubName.ToLower()))
+            : new WebSocket(_socket + string.Format("signalr/reconnect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22{1}%22%7D%5D&tid=10", _connectionToken, _hubName.ToLower()));
 
         AttachAndConnect();
     }
@@ -52,19 +53,34 @@ public class SignalRClient
         _ws.Close();
     }
 
-    public void SendMessage(string name, string message)
+    public void SendMessage(string name, string message, string method = "SendChatMessage")
     {
-        //{"H":"chathub","M":"Send","A":["tester","hello"],"I":0}
-
         var payload = new RollerBallWrapper()
         {
-            H = "GeneralHub",
-            M = "SendChatMessage",
+            H = _hubName,
+            M = method,
             A = new[] { name, message },
             I = 12
         };
 
         var wsPacket = JsonConvert.SerializeObject(payload);
+
+        _ws.Send(wsPacket);
+    }
+
+    public void SendImage(string name, string image, string method = "UpdateWebCamStream")
+    {
+        var payload = new RollerBallWrapper()
+        {
+            H = _hubName,
+            M = method,
+            A = new[] { name, image },
+            I = 12
+        };
+
+        var wsPacket = JsonConvert.SerializeObject(payload);
+
+        UnityEngine.Debug.Log(wsPacket.ToString());
 
         _ws.Send(wsPacket);
     }
@@ -87,11 +103,9 @@ public class SignalRClient
         UnityEngine.Debug.Log("Opened Connection");
     }
 
-    //
-    // This seems to be retriving the last frame containing the Identifier
     void _ws_OnMessage(object sender, MessageEventArgs e)
     {
-        UnityEngine.Debug.Log(e.Data); // Returns {"I":"0"} ????
+        UnityEngine.Debug.Log(e.Data);
     }
 
     void _ws_OnError(object sender, WebSocketSharp.ErrorEventArgs e)
