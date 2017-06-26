@@ -12,7 +12,7 @@ public class SignalRClient
     private string _connectionToken;
     private Dictionary<string, UnTypedActionContainer> _actionMap;
 
-    private readonly string _socketUrl = "https://quisutdeus.in/";
+    private readonly string _socketUrl = "http://quisutdeus.in/";
 
     private readonly string _socket = "ws://quisutdeus.in/";
 
@@ -20,7 +20,7 @@ public class SignalRClient
     {
         //https://quisutdeus.in/signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498509973099
         _actionMap = new Dictionary<string, UnTypedActionContainer>();
-        var webRequest = (HttpWebRequest)WebRequest.Create(_socketUrl + "/signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498509973099");
+        var webRequest = (HttpWebRequest)WebRequest.Create(_socketUrl + "signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498509973099");
         var response = (HttpWebResponse)webRequest.GetResponse();
 
         using (var sr = new StreamReader(response.GetResponseStream()))
