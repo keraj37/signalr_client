@@ -14,6 +14,7 @@ public class Main : MonoBehaviour
 
     WebCamTexture webCamTexture;
     Coroutine uploadCoroutine;
+    SignalRClient ws;
 
     private bool IsStreaming
     {
@@ -25,17 +26,18 @@ public class Main : MonoBehaviour
         webCamTexture = new WebCamTexture();
         webCamTexture.Play();
         img.texture = webCamTexture;
+
+        ws = new SignalRClient("http://quisutdeus.in/", "WebCamHub");
+        ws.Open();
     }
 
     public void Test()
     {
-        //StartCoroutine(Upload("TEST TEST"));
+        StartCoroutine(Upload("TEST TEST"));
 
         //Program.Test();
-
-        SignalRClient ws = new SignalRClient("http://quisutdeus.in/", "WebCamHub");
-        ws.Open();
-        ws.SendImage(inputName.text, "asdasdasd");
+        
+        //ws.SendImage(inputName.text, "asdasdasd");
     }
 
     /*
