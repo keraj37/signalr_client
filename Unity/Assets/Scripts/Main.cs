@@ -27,7 +27,7 @@ public class Main : MonoBehaviour
         webCamTexture.Play();
         img.texture = webCamTexture;
 
-        ws = new SignalRClient("http://quisutdeus.in/", "WebCamHub");
+        ws = new SignalRClient("http://quisutdeus.in/", "GeneralHub");
         ws.Open();
     }
 

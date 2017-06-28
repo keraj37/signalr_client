@@ -22,9 +22,9 @@ public class SignalRClient
         _socket = _socketUrl.Replace("http", "ws");
         _hubName = hubName;
 
-        //https://quisutdeus.in/signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%2C%7B%22name%22%3A%22webcamhub%22%7D%5D&_=1498628775478
+        //https://quisutdeus.in/signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498643185939
         _actionMap = new Dictionary<string, UnTypedActionContainer>();
-        var webRequest = (HttpWebRequest)WebRequest.Create(_socketUrl + "signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%2C%7B%22name%22%3A%22webcamhub%22%7D%5D&_=1498628775478");
+        var webRequest = (HttpWebRequest)WebRequest.Create(_socketUrl + "signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498643185939");
         var response = (HttpWebResponse)webRequest.GetResponse();
 
         using (var sr = new StreamReader(response.GetResponseStream()))
@@ -39,11 +39,11 @@ public class SignalRClient
 
     public void Open()
     {
-        //https://quisutdeus.in/signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken=uIU%2BmtFp6asnWlk1w2PpxtAFabrAtJLWWeANBpWs2iWkQhiKhGTT%2FQ7cdPArMnP8bAwYjX45X3JyE3Inr5DafNIkbk5%2F0FDXiS67W0SeXhrjTHdn8%2F8cp36lOmXESrXb&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%2C%7B%22name%22%3A%22webcamhub%22%7D%5D&tid=9
+        //https://quisutdeus.in/signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken=QAloDYvEfEDp%2FRYDZd1f87EBK73Pf6QUm9J190Uxl%2BkmdZ8sfpU9qrqivJGm%2FQKtRvabm8FY72DoT1cqLeAtXq%2BrNnFul9lj%2FCApG%2FXeJDuaMG3AVtC5lAkHeucGOWBs&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=8
 
         _ws = _ws == null
-            ? new WebSocket(_socket + string.Format("signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%2C%7B%22name%22%3A%22webcamhub%22%7D%5D&tid=9", _connectionToken))
-            : new WebSocket(_socket + string.Format("signalr/reconnect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%2C%7B%22name%22%3A%22webcamhub%22%7D%5D&tid=9", _connectionToken));
+            ? new WebSocket(_socket + string.Format("signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=8", _connectionToken))
+            : new WebSocket(_socket + string.Format("signalr/reconnect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=8", _connectionToken));
 
         AttachAndConnect();
     }
