@@ -40,6 +40,11 @@ public class Main : MonoBehaviour
         ws.SendImage(inputName.text, "23123123123123");
     }
 
+    private void OnDestroy()
+    {
+        ws.Close();
+    }
+
     /*
     private void SignalR()
     {
