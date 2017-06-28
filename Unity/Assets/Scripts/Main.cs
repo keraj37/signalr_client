@@ -33,11 +33,11 @@ public class Main : MonoBehaviour
 
     public void Test()
     {
-        StartCoroutine(Upload("TEST TEST"));
+        //StartCoroutine(Upload("TEST TEST"));
 
         //Program.Test();
         
-        //ws.SendImage(inputName.text, "asdasdasd");
+        ws.SendImage(inputName.text, "23123123123123");
     }
 
     /*
