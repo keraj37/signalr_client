@@ -9,17 +9,17 @@ using UnityEngine.Networking;
 public class Main : MonoBehaviour
 {
     public RawImage img;
+    public Texture2D imgNull;
     public InputField inputName;
+    public InputField inputDelay;
     public Text streamText;
 
     WebCamTexture webCamTexture;
-    Coroutine uploadCoroutine;
     SignalRClient ws;
 
-    private bool IsStreaming
-    {
-        get { return uploadCoroutine != null; }
-    }
+    private float _delay = 0f;
+
+    private bool IsStreaming { get; set; }
 
     void Start()
     {
@@ -31,137 +31,65 @@ public class Main : MonoBehaviour
         ws.Open();
     }
 
-    public void Test()
-    {
-        //StartCoroutine(Upload("TEST TEST"));
-
-        //Program.Test();
-        
-        ws.SendImage(inputName.text, "23123123123123");
-    }
-
     private void OnDestroy()
     {
         ws.Close();
     }
 
-    /*
-    private void SignalR()
-    {
-        var connection = new HubConnection("https:/quisutdeus.in");
-        var myHub = connection.CreateHubProxy("WebCamHub");
-        //Start connection
-
-        connection.Start().ContinueWith(task => {
-            if (task.IsFaulted)
-            {
-                Console.WriteLine("There was an error opening the connection:{0}",
-                                  task.Exception.GetBaseException());
-            }
-            else
-            {
-                Console.WriteLine("Connected");
-            }
-
-        }).Wait();
-
-        myHub.Invoke<string>("Send", "HELLO World ").ContinueWith(task => {
-            if (task.IsFaulted)
-            {
-                Console.WriteLine("There was an error calling send: {0}",
-                                  task.Exception.GetBaseException());
-            }
-            else
-            {
-                Console.WriteLine(task.Result);
-            }
-        });
-
-        myHub.On<string>("addMessage", param => {
-            Console.WriteLine(param);
-        });
-
-        myHub.Invoke<string>("DoSomething", "I'm doing something!!!").Wait();
-
-
-        Console.Read();
-        connection.Stop();
-    }
-    */
-
-    public void TakeScreenshot()
+    public void SendImage()
     {
         if (webCamTexture.isPlaying)
         {
-            Texture2D PhotoTaken = new Texture2D(webCamTexture.width, webCamTexture.height);
-            PhotoTaken.SetPixels(webCamTexture.GetPixels());
-            PhotoTaken.Apply();
-
-            img.texture = PhotoTaken;
-
-            byte[] image = PhotoTaken.EncodeToJPG(50);
-
-            StartCoroutine(Upload(Convert.ToBase64String(image)));
-
-            //File.WriteAllBytes(Application.persistentDataPath + "/test.jpg", image);
+            ws.SendImage(inputName.text, GetCurrentFrame());
+        }
+        else
+        {
+            byte[] image = imgNull.EncodeToJPG(50); 
+            ws.SendImage(inputName.text, Convert.ToBase64String(image));
         }
     }
 
     public void StartStream()
     {
-        if(IsStreaming)
+        IsStreaming = !IsStreaming;
+
+        if (!IsStreaming)
         {
             streamText.text = "Start Stream";
-
-            StopCoroutine(uploadCoroutine);
-            uploadCoroutine = null;
         }
         else
         {
+            float.TryParse(inputDelay.text, out _delay);
+
             streamText.text = "Stop Stream";
-
-            img.texture = webCamTexture;
-            StreamNext();
         }
     }
 
-    private void StreamNext()
+    private string GetCurrentFrame()
     {
-        if (webCamTexture.isPlaying)
-        {
-            Texture2D PhotoTaken = new Texture2D(webCamTexture.width, webCamTexture.height);
-            PhotoTaken.SetPixels(webCamTexture.GetPixels());
-            PhotoTaken.Apply();
+        Texture2D photoTaken = new Texture2D(webCamTexture.width, webCamTexture.height);
+        photoTaken.SetPixels(webCamTexture.GetPixels());
+        photoTaken.Apply();
 
-            byte[] image = PhotoTaken.EncodeToJPG(50);
+        byte[] image = photoTaken.EncodeToJPG(50);
 
-            uploadCoroutine = StartCoroutine(Upload(Convert.ToBase64String(image), StreamNext));
-        }
+        DestroyImmediate(photoTaken);
+
+        return Convert.ToBase64String(image);
     }
 
-    IEnumerator Upload(string image, Action onComplete = null)
+    private void Update()
     {
-        WWWForm form = new WWWForm();
-        form.AddField("name", inputName.text);
-        form.AddField("image", image);
-
-        Debug.Log("Sending: " + image);
-
-        UnityWebRequest www = UnityWebRequest.Post("https://quisutdeus.in/Projects/WebCam", form);
-        yield return www.Send();
-
-        if (www.isError)
+        if(IsStreaming)
         {
-            Debug.Log(www.error);
-        }
-        else
-        {
-            Debug.Log("Form upload complete!");
-        }
+            _delay -= Time.deltaTime;
 
-        if(onComplete != null)
-        {
-            onComplete();
+            if (_delay <= 0f)
+            {
+                float.TryParse(inputDelay.text, out _delay);
+
+                SendImage();
+            }
         }
     }
 }
