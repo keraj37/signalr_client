@@ -5,6 +5,17 @@ using System.Net;
 using Newtonsoft.Json;
 using WebSocketSharp;
 using SimpleJSON;
+using UnityEngine.UI;
+using UnityEngine;
+
+public enum ConnectionStatus
+{
+    CONNECTING,
+    CONNECTED,
+    NOT_CONNECTED,
+    DISCONNECTED,
+    ERROR
+}
 
 public class SignalRClient
 {
@@ -12,38 +23,62 @@ public class SignalRClient
     private string _connectionToken;
     private Dictionary<string, UnTypedActionContainer> _actionMap;
 
-    private string _socketUrl = "http://quisutdeus.in/";
+    private string _socketUrl = "http://";
     private string _hubName = "generalhub";
-    private string _socket = "ws://quisutdeus.in/";
+    private string _socket = "ws://";
+    private System.Action<ConnectionStatus> onConnectionUpdate;
 
-    public SignalRClient(string url, string hubName)
+    public SignalRClient(string url, string hubName, System.Action<ConnectionStatus> onConnectionUpdate)
     {
-        _socketUrl = url;
-        _socket = _socketUrl.Replace("http", "ws");
-        _hubName = hubName;
+        this.onConnectionUpdate = onConnectionUpdate;
+        _socketUrl = "http://" + url;
+        _socket = "ws://" + url;
+        _hubName = hubName;        
 
-        //https://quisutdeus.in/signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498643185939
         _actionMap = new Dictionary<string, UnTypedActionContainer>();
-        var webRequest = (HttpWebRequest)WebRequest.Create(_socketUrl + "signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&_=1498643185939");
-        var response = (HttpWebResponse)webRequest.GetResponse();
 
-        using (var sr = new StreamReader(response.GetResponseStream()))
+        TryConnect();
+    }
+
+    public void TryConnect()
+    {
+        onConnectionUpdate(ConnectionStatus.CONNECTING);
+
+        try
         {
-            var payload = sr.ReadToEnd();
+            var webRequest = (HttpWebRequest)WebRequest.Create(_socketUrl + string.Format("/signalr/negotiate?clientProtocol=1.5&connectionData=%5B%7B%22name%22%3A%22{0}%22%7D%5D&_=1498643185939", _hubName));
+            var response = (HttpWebResponse)webRequest.GetResponse();
 
-            UnityEngine.Debug.Log(payload);
+            using (var sr = new StreamReader(response.GetResponseStream()))
+            {
+                var payload = sr.ReadToEnd();
 
-            _connectionToken = Uri.EscapeDataString(JSON.Parse(payload).AsObject["ConnectionToken"].Value);
+                JSONClass json = JSON.Parse(payload).AsObject;
+
+                if (json != null && json.ContainsKey("ConnectionToken"))
+                {
+                    _connectionToken = Uri.EscapeDataString(json["ConnectionToken"].Value);
+                    onConnectionUpdate(ConnectionStatus.CONNECTED);
+                }
+                else
+                {
+                    onConnectionUpdate(ConnectionStatus.NOT_CONNECTED);
+                }
+            }
+
+            Open();
+        }
+        catch (Exception e)
+        {
+            onConnectionUpdate(ConnectionStatus.NOT_CONNECTED);
         }
     }
 
     public void Open()
     {
-        //https://quisutdeus.in/signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken=QAloDYvEfEDp%2FRYDZd1f87EBK73Pf6QUm9J190Uxl%2BkmdZ8sfpU9qrqivJGm%2FQKtRvabm8FY72DoT1cqLeAtXq%2BrNnFul9lj%2FCApG%2FXeJDuaMG3AVtC5lAkHeucGOWBs&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=8
-
         _ws = _ws == null
-            ? new WebSocket(_socket + string.Format("signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=8", _connectionToken))
-            : new WebSocket(_socket + string.Format("signalr/reconnect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22generalhub%22%7D%5D&tid=8", _connectionToken));
+            ? new WebSocket(_socket + string.Format("/signalr/connect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22{1}%22%7D%5D&tid=8", _connectionToken, _hubName))
+            : new WebSocket(_socket + string.Format("/signalr/reconnect?transport=webSockets&clientProtocol=1.5&connectionToken={0}&connectionData=%5B%7B%22name%22%3A%22{1}%22%7D%5D&tid=8", _connectionToken, _hubName));
 
         AttachAndConnect();
     }
@@ -51,21 +86,6 @@ public class SignalRClient
     public void Close()
     {
         _ws.Close();
-    }
-
-    public void SendMessage(string name, string message, string method = "SendChatMessage")
-    {
-        var payload = new RollerBallWrapper()
-        {
-            H = "ChatHub",
-            M = method,
-            A = new[] { name, message },
-            I = 12
-        };
-
-        var wsPacket = JsonConvert.SerializeObject(payload);
-
-        _ws.Send(wsPacket);
     }
 
     public void SendImage(string name, string image, string method = "UpdateWebCamStream")
@@ -79,8 +99,6 @@ public class SignalRClient
         };
 
         var wsPacket = JsonConvert.SerializeObject(payload);
-
-        UnityEngine.Debug.Log(wsPacket.ToString());
 
         _ws.Send(wsPacket);
     }
@@ -100,21 +118,38 @@ public class SignalRClient
 
     void _ws_OnOpen(object sender, EventArgs e)
     {
+        UnityMainThreadDispatcher.Instance().Enqueue(() => onConnectionUpdate(ConnectionStatus.CONNECTED));
+
         UnityEngine.Debug.Log("Opened Connection");
     }
 
     void _ws_OnMessage(object sender, MessageEventArgs e)
     {
+        JSONClass json = JSON.Parse(e.Data).AsObject;
+
+        if(json.ContainsKey("E"))
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => onConnectionUpdate(ConnectionStatus.ERROR));
+        }
+        else
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => onConnectionUpdate(ConnectionStatus.CONNECTED));
+        }
+
         UnityEngine.Debug.Log(e.Data);
     }
 
     void _ws_OnError(object sender, WebSocketSharp.ErrorEventArgs e)
     {
+        UnityMainThreadDispatcher.Instance().Enqueue(() => onConnectionUpdate(ConnectionStatus.ERROR));
+
         UnityEngine.Debug.Log(e.Message);
     }
 
     void _ws_OnClose(object sender, CloseEventArgs e)
     {
+        UnityMainThreadDispatcher.Instance().Enqueue(() => onConnectionUpdate(ConnectionStatus.DISCONNECTED));
+
         UnityEngine.Debug.Log(e.Reason + " Code: " + e.Code + " WasClean: " + e.WasClean);
     }
 
