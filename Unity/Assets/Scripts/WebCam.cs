@@ -21,7 +21,40 @@ public class WebCam : MonoBehaviour
 
     WebCamTexture webCamTexture;
     SignalRClient ws;
-    ConnectionStatus currentStatus = ConnectionStatus.DISCONNECTED;
+    ConnectionStatus CurrentStatus
+    {
+        get { return _currentStatus; }
+        set
+        {
+            _currentStatus = value;
+            showWhenConnected.SetActive(_currentStatus == ConnectionStatus.CONNECTED);
+            showWhenNotConnected.SetActive(_currentStatus != ConnectionStatus.CONNECTED && _currentStatus != ConnectionStatus.CONNECTING);
+
+            switch (_currentStatus)
+            {
+                case ConnectionStatus.CONNECTED:
+                    statusTxt.text = "Status: <color=#00ffffff>Connected.</color>";
+                    break;
+                case ConnectionStatus.NOT_CONNECTED:
+                    IsStreaming = false;
+                    statusTxt.text = "Status: <color=#ff0000ff>Connection failed.</color>";
+                    break;
+                case ConnectionStatus.ERROR:
+                    IsStreaming = false;
+                    statusTxt.text = "Status: <color=#ff0000ff>Error.</color>";
+                    break;
+                case ConnectionStatus.DISCONNECTED:
+                    IsStreaming = false;
+                    statusTxt.text = "Status: <color=#ffa500ff>Disconnected.</color>";
+                    break;
+                case ConnectionStatus.CONNECTING:
+                    IsStreaming = false;
+                    statusTxt.text = "Status: <color=#ffa500ff>Connecting.... </color>";
+                    break;
+            }
+        }
+    }
+    ConnectionStatus _currentStatus = ConnectionStatus.DISCONNECTED;
 
     private float _delay = 0f;
     private float _delayPing = 0f;
@@ -57,10 +90,10 @@ public class WebCam : MonoBehaviour
 
     private void Disconnect()
     {
-        if(currentStatus == ConnectionStatus.CONNECTED)
+        if(CurrentStatus == ConnectionStatus.CONNECTED)
             ws.SendDisconnected(Login.LOGGEDIN_NAME);
 
-        currentStatus = ConnectionStatus.NOT_CONNECTED;
+        CurrentStatus = ConnectionStatus.NOT_CONNECTED;
 
         ws.Close();
     }
@@ -72,30 +105,22 @@ public class WebCam : MonoBehaviour
 
         ws = new SignalRClient(DOMAIN, "GeneralHub", status =>
         {
-            showWhenConnected.SetActive(status == ConnectionStatus.CONNECTED);
-            showWhenNotConnected.SetActive(status != ConnectionStatus.CONNECTED && status != ConnectionStatus.CONNECTING);
-
-            currentStatus = status;
-
-            switch (status)
+            CurrentStatus = status;
+        }, (cmd, param) => 
+        {
+            switch(cmd)
             {
-                case ConnectionStatus.CONNECTED:                   
-                    statusTxt.text = "Status: <color=#00ffffff>Connected.</color>";
+                case RemoteCommand.SCREENSHOT:
+                    SendImage();
                     break;
-                case ConnectionStatus.NOT_CONNECTED:
+                case RemoteCommand.START_STREAM:
+                    IsStreaming = true;
+                    break;
+                case RemoteCommand.STOP_STREAM:
                     IsStreaming = false;
-                    statusTxt.text = "Status: <color=#ff0000ff>Connection failed.</color>";
                     break;
-                case ConnectionStatus.ERROR:
-                    IsStreaming = false;
-                    statusTxt.text = "Status: <color=#ff0000ff>Error.</color>";
-                    break;
-                case ConnectionStatus.DISCONNECTED:
-                    IsStreaming = false;
-                    statusTxt.text = "Status: <color=#ffa500ff>Disconnected.</color>";
-                    break;
-                case ConnectionStatus.CONNECTING:
-                    statusTxt.text = "Status: <color=#ffa500ff>Connecting.... </color>";
+                case RemoteCommand.SET_STREAM_DELAY:
+                    inputDelay.text = param;
                     break;
             }
         });
@@ -164,7 +189,7 @@ public class WebCam : MonoBehaviour
 
     private void Update()
     {
-        if(currentStatus == ConnectionStatus.CONNECTED)
+        if(CurrentStatus == ConnectionStatus.CONNECTED)
         {
             _delayPing -= Time.deltaTime;
 

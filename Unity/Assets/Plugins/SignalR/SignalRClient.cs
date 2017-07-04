@@ -17,25 +17,32 @@ public enum ConnectionStatus
     ERROR
 }
 
+public enum RemoteCommand
+{
+    SCREENSHOT,
+    START_STREAM,
+    STOP_STREAM,
+    SET_STREAM_DELAY
+}
+
 public class SignalRClient
 {
     private WebSocket _ws;
     private string _connectionToken;
-    private Dictionary<string, UnTypedActionContainer> _actionMap;
 
     private string _socketUrl = "";
     private string _hubName = "";
     private string _socket = "";
     private System.Action<ConnectionStatus> onConnectionUpdate;
+    private System.Action<RemoteCommand, string> onRemoteCommand;
 
-    public SignalRClient(string url, string hubName, System.Action<ConnectionStatus> onConnectionUpdate)
+    public SignalRClient(string url, string hubName, System.Action<ConnectionStatus> onConnectionUpdate, System.Action<RemoteCommand, string> onRemoteCommand)
     {
         this.onConnectionUpdate = onConnectionUpdate;
+        this.onRemoteCommand = onRemoteCommand;
         _socketUrl = "http://" + url;
         _socket = "ws://" + url;
-        _hubName = hubName;        
-
-        _actionMap = new Dictionary<string, UnTypedActionContainer>();
+        _hubName = hubName;
 
         TryConnect();
     }
@@ -90,7 +97,7 @@ public class SignalRClient
 
     public void SendImage(string name, string image, string method = "UpdateWebCamStream")
     {
-        var payload = new RollerBallWrapper()
+        var payload = new SignalRMessage()
         {
             H = _hubName,
             M = method,
@@ -103,9 +110,9 @@ public class SignalRClient
         _ws.Send(wsPacket);
     }
 
-    public void SendConnected(string name, string device,string method = "DevicePing")
+    public void SendConnected(string name, string device, string method = "DevicePing")
     {
-        var payload = new RollerBallWrapper()
+        var payload = new SignalRMessage()
         {
             H = _hubName,
             M = method,
@@ -120,7 +127,7 @@ public class SignalRClient
 
     public void SendDisconnected(string name, string method = "DeviceDisconnected")
     {
-        var payload = new RollerBallWrapper()
+        var payload = new SignalRMessage()
         {
             H = _hubName,
             M = method,
@@ -136,13 +143,9 @@ public class SignalRClient
     private void AttachAndConnect()
     {
         _ws.OnClose += _ws_OnClose;
-
         _ws.OnError += _ws_OnError;
-
         _ws.OnMessage += _ws_OnMessage;
-
         _ws.OnOpen += _ws_OnOpen;
-
         _ws.Connect();
     }
 
@@ -157,24 +160,29 @@ public class SignalRClient
     {
         JSONClass json = JSON.Parse(e.Data).AsObject;
 
-        if(json.ContainsKey("E"))
+#if UNITY_EDITOR
+        UnityEngine.Debug.Log(e.Data);
+#endif
+
+        if (json.ContainsKey("E"))
         {
             UnityMainThreadDispatcher.Instance().Enqueue(() => onConnectionUpdate(ConnectionStatus.ERROR));
         }
         else
         {
             UnityMainThreadDispatcher.Instance().Enqueue(() => onConnectionUpdate(ConnectionStatus.CONNECTED));
-        }
 
-        UnityEngine.Debug.Log(e.Data);
-
-        if (json.ContainsKey("M"))
-        {
-            switch(json["M"].Value)
+            var msgs = SignalRMessage.FromJSON(json);
+            foreach (var msg in msgs)
             {
-                case "remoteCommand":
-                    UnityEngine.Debug.Log("YEs!");
-                    break;
+                switch(msg.M)
+                {
+                    case "remoteCommand":
+                        RemoteCommand cmd = (RemoteCommand)System.Enum.Parse(typeof(RemoteCommand), msg.A[0].ToUpper());
+                        var param = msg.A.Length > 1 ? msg.A[1] : string.Empty;
+                        UnityMainThreadDispatcher.Instance().Enqueue(() => onRemoteCommand(cmd, param));
+                        break;
+                }
             }
         }
     }
@@ -192,34 +200,9 @@ public class SignalRClient
 
         UnityEngine.Debug.Log(e.Reason + " Code: " + e.Code + " WasClean: " + e.WasClean);
     }
-
-    public void On<T>(string method, Action<T> callback) where T : class
-    {
-        _actionMap.Add(method, new UnTypedActionContainer
-        {
-            Action = new Action<object>(x =>
-            {
-                callback(x as T);
-            }),
-            ActionType = typeof(T)
-        });
-    }
 }
 
-internal class UnTypedActionContainer
-{
-    public Action<object> Action { get; set; }
-    public Type ActionType { get; set; }
-}
-
-class MessageWrapper
-{
-    public string C { get; set; }
-
-    public RollerBallWrapper[] M { get; set; }
-}
-
-class RollerBallWrapper
+class SignalRMessage
 {
     public string H { get; set; }
 
@@ -228,4 +211,35 @@ class RollerBallWrapper
     public string[] A { get; set; }
 
     public int I { get; set; }
+
+    public static SignalRMessage[] FromJSON(JSONClass json)
+    {
+        List<SignalRMessage> result = new List<SignalRMessage>();
+
+        if (json.ContainsKey("M") && json["M"].AsArray != null)
+        {
+            foreach (JSONNode node in json["M"].AsArray)
+            {
+                SignalRMessage msg = new SignalRMessage();
+                msg.H = node.AsObject.ContainsKey("H") ? node.AsObject["H"].Value : string.Empty;
+                msg.M = node.AsObject.ContainsKey("M") ? node.AsObject["M"].Value : string.Empty;
+
+                if (node.AsObject.ContainsKey("A") && node.AsObject["A"].AsArray != null)
+                {
+                    List<string> paramsA = new List<string>();
+
+                    foreach (JSONNode nodeParam in node.AsObject["A"].AsArray)
+                    {
+                        paramsA.Add(nodeParam.Value);
+                    }
+
+                    msg.A = paramsA.ToArray();
+                }
+
+                result.Add(msg);
+            }
+        }
+
+        return result.ToArray();
+    }
 }
