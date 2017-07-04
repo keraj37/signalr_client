@@ -23,9 +23,9 @@ public class SignalRClient
     private string _connectionToken;
     private Dictionary<string, UnTypedActionContainer> _actionMap;
 
-    private string _socketUrl = "http://";
-    private string _hubName = "generalhub";
-    private string _socket = "ws://";
+    private string _socketUrl = "";
+    private string _hubName = "";
+    private string _socket = "";
     private System.Action<ConnectionStatus> onConnectionUpdate;
 
     public SignalRClient(string url, string hubName, System.Action<ConnectionStatus> onConnectionUpdate)
@@ -103,6 +103,36 @@ public class SignalRClient
         _ws.Send(wsPacket);
     }
 
+    public void SendConnected(string name, string device,string method = "DevicePing")
+    {
+        var payload = new RollerBallWrapper()
+        {
+            H = _hubName,
+            M = method,
+            A = new[] { name, device },
+            I = 12
+        };
+
+        var wsPacket = JsonConvert.SerializeObject(payload);
+
+        _ws.Send(wsPacket);
+    }
+
+    public void SendDisconnected(string name, string method = "DeviceDisconnected")
+    {
+        var payload = new RollerBallWrapper()
+        {
+            H = _hubName,
+            M = method,
+            A = new[] { name },
+            I = 12
+        };
+
+        var wsPacket = JsonConvert.SerializeObject(payload);
+
+        _ws.Send(wsPacket);
+    }
+
     private void AttachAndConnect()
     {
         _ws.OnClose += _ws_OnClose;
@@ -137,6 +167,16 @@ public class SignalRClient
         }
 
         UnityEngine.Debug.Log(e.Data);
+
+        if (json.ContainsKey("M"))
+        {
+            switch(json["M"].Value)
+            {
+                case "remoteCommand":
+                    UnityEngine.Debug.Log("YEs!");
+                    break;
+            }
+        }
     }
 
     void _ws_OnError(object sender, WebSocketSharp.ErrorEventArgs e)

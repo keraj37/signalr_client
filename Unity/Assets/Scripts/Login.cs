@@ -16,14 +16,14 @@ public class Login : MonoBehaviour
     public InputField email;
     public InputField password;
     public Toggle rememberMe;
-    public GameObject loginFailed;
-    public GameObject loginSuccess;
+    public Text status;
     public GameObject hideOnSuccess;
 
     private void Awake()
     {
-        loginFailed.SetActive(false);
-        loginSuccess.SetActive(false);
+        status.text = string.Empty;
+
+        Application.runInBackground = true;
     }
 
     private void Start()
@@ -38,6 +38,7 @@ public class Login : MonoBehaviour
 
     public void DoLogin()
     {
+        status.text = "<color=#ffa500ff>Authenticating...</color>";
         StartCoroutine(LoginCoroutine());
     }
 
@@ -69,9 +70,9 @@ public class Login : MonoBehaviour
 
             if(!success)
             {
-                loginFailed.SetActive(true);
+                status.text = "<color=#ff0000ff>Error.</color>";
                 yield return new WaitForSecondsRealtime(2f);
-                loginFailed.SetActive(false);
+                status.text = string.Empty;
                 hideOnSuccess.SetActive(true);
             }
             else
@@ -88,7 +89,7 @@ public class Login : MonoBehaviour
 
                 LOGGEDIN_NAME = email.text;
 
-                loginSuccess.SetActive(true);
+                status.text = "<color=#00ffffff>Authentication successful.</color>";
                 hideOnSuccess.SetActive(false);
 
                 yield return new WaitForSecondsRealtime(1.2f);
